@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useT } from '../i18n';
 
-const REPO_URL = 'https://github.com/TencentEdgeOne/openai-agent-starter-python';
+// 学员自己的 Fork 仓库（课程要求：指向 Fork，不是上游 Starter）
+const REPO_URL = 'https://github.com/quanjia242/travel-decision-agent';
 
 /**
  * Floating GitHub badge anchored to the bottom-right viewport corner.

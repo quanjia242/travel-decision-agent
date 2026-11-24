@@ -39,3 +39,7 @@ plan/
 # AI assistant local instructions
 CLAUDE.md
 AGENTS.md
+
+# Agent workspace local data (not part of the course project)
+.workbuddy/
+output/

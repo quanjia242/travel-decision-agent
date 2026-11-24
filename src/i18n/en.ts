@@ -1,26 +1,26 @@
 const en = {
   // Header
-  "app.title": "OpenAI Agents Starter",
-  "app.subtitle": "Running on EdgeOne Makers with session memory & Agent Tools",
+  "app.title": "Travel Decision Agent",
+  "app.subtitle": "Location + brand preferences → nearby mall recommendations · on EdgeOne Makers",
 
   // Empty state
-  "empty.title": "OpenAI Agents Starter",
-  "empty.hint": "I'm an OpenAI Agent running on EdgeOne with custom tools and session memory. I can help with weather, clothing advice, translation, and text statistics.",
-  "empty.features": "EdgeOne Store · Session Memory · Agent Tools",
+  "empty.title": "Travel Decision Agent",
+  "empty.hint": "Tell me where you are and which brands or stores you want. I'll search nearby malls, verify which stores are present, compare distances, and recommend with real data. All locations and distances come from map tools.",
+  "empty.features": "AMap Search · Session Memory · Agent Tools",
 
   // Chat input
-  "chat.placeholder": "Type a message...  ⏎ Send · Shift+⏎ Newline",
-  "chat.hint": "Powered by OpenAI Agents SDK + EdgeOne Makers · Demo only",
+  "chat.placeholder": "Where are you, and what brands are you looking for...  ⏎ Send · Shift+⏎ Newline",
+  "chat.hint": "Powered by OpenAI Agents SDK + EdgeOne Makers · locations & distances come from map tools",
 
   // Preset questions
-  "preset.1": "What is the weather like in Beijing now? Any clothing suggestions?",
-  "preset.2": "Translate \"Hello, welcome to Beijing!\" into Chinese and count the characters.",
+  "preset.1": "I'm near Honglian South Road subway station. Recommend the nearest mall that has both Beqingsong and Xiting Cunwu.",
+  "preset.2": "If both brands don't have to be in the same mall, is there a closer option?",
 
   // Tool indicators
-  "tool.weather": "Weather",
-  "tool.clothing": "Clothing",
-  "tool.translate": "Translate",
-  "tool.statistics": "Statistics",
+  "tool.geocode": "Geocode",
+  "tool.malls": "Nearby Malls",
+  "tool.brands": "Brand Check",
+  "tool.distance": "Distance",
 
   // Status & errors
   "status.error": "Request failed. Please check if the backend service is running.",

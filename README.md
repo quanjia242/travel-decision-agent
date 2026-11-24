@@ -1,87 +1,81 @@
-# OpenAI Agents Starter (Python)
+# Travel Decision Agent
 
-A full-stack EdgeOne Makers Agent template — streaming chat backed by the OpenAI Agents SDK (Python), with custom tools and `context.store`-backed conversation memory.
+A course project built on [TencentEdgeOne/openai-agent-starter-python](https://github.com/TencentEdgeOne/openai-agent-starter-python): the user provides a **location** and **brand / store preferences**, and the Agent searches nearby malls via AMap Web Services, verifies which stores are present, compares distances, and recommends with real data.
 
-**Framework:** OpenAI Agents SDK · **Category:** Quick Start <!-- TODO: confirm --> · **Language:** Python
+> Full manual procedure (fork, Makers binding, keys, secrets, deployment): **[MANUAL_STEPS.md](./MANUAL_STEPS.md)** (Chinese) · **[README_zh-CN.md](./README_zh-CN.md)** (Chinese).
 
-[![Deploy to EdgeOne Makers](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://edgeone.ai/makers/new?template=openai-agents-starter-python&from=within&fromAgent=1&agentLang=python)
+**Framework:** OpenAI Agents SDK (Python) · React/Vite frontend · EdgeOne Makers
 
-<!-- ![preview](./assets/preview.png)  TODO: confirm -->
+## How it works
 
-## Overview
+```
+user location + brands
+  → geocode_location        location → lng,lat
+  → search_nearby_malls     nearby malls with straight-line distance
+  → search_brands_in_mall   per-brand match evidence
+  → get_distance            optional precise comparison
+  → rank by brand match + distance → recommendation with evidence
+```
 
-A minimal, production-shaped Python starter that wires the OpenAI Agents SDK into EdgeOne Makers. Demonstrates the full chat loop — SSE streaming, custom tool registration, conversation persistence — so you can fork it and start replacing the toy tools (`get_weather`, `get_clothing_advice`, `translate_text`, `text_statistics`) with real ones.
+Locations, stores and distances come **only from tool results** — the model must never invent them. Every tool returns `{"ok": true|false, "error", "hint"}`; on failure the Agent must explain the reason. All keys are read from environment variables only.
 
-- **SSE streaming chat** — token-by-token `text_delta` events plus `tool_called` events.
-- **Custom Agent tools** — four sample `@function_tool` definitions, ready to be replaced.
-- **Sticky conversation memory** — `context.store.openai_session(cid)` plugs straight into `Runner.run_streamed()`'s `session` parameter.
-- **Honest cancellation** — backend `context.utils.abort_active_run()` truly interrupts the LLM call.
-- **Two-folder backend** — long-running stateful work in `agents/`, short stateless `/history` in `cloud-functions/`.
+| Tool | AMap endpoint |
+|---|---|
+| `geocode_location` | `/v3/geocode/geo` |
+| `search_nearby_malls` | `/v3/place/around` |
+| `search_brands_in_mall` | `/v3/place/around` |
+| `get_distance` | `/v3/distance` |
+
+See [api-schema.json](./api-schema.json) for the third-party API integration description.
 
 ## Environment Variables
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `AI_GATEWAY_API_KEY` | Yes | Model gateway API key. Use your Makers Models API Key, or any OpenAI-compatible provider key. |
-| `AI_GATEWAY_BASE_URL` | Yes | Gateway base URL. For Makers Models, use `https://ai-gateway.edgeone.link/v1`. |
-| `AI_GATEWAY_MODEL` | No | Model ID. Defaults to `@makers/deepseek-v4-flash` (a free built-in model). |
+|---|---|---|
+| `AI_GATEWAY_API_KEY` | Yes | Makers Models API Key, or any OpenAI-compatible provider key. |
+| `AI_GATEWAY_BASE_URL` | Yes | For Makers Models use `https://ai-gateway.edgeone.link/v1`. |
+| `AI_GATEWAY_MODEL` | No | Defaults to `@makers/deepseek-v4-flash` (free built-in, usage cap). |
+| `AMAP_API_KEY` | Yes | AMap **Web Service** Key (not the Web/JS API key). Register at <https://console.amap.com/>. |
 
-This template follows the OpenAI-compatible standard — point these at Makers Models or any compatible provider.
-
-### How to get `AI_GATEWAY_API_KEY`
-
-1. Open the [Makers Console](https://edgeone.ai/makers/new?s_url=https://console.tencentcloud.com/edgeone/makers).
-2. Sign in and enable Makers.
-3. Go to **Makers → Models → API Key** and create a key.
-4. Copy it into `AI_GATEWAY_API_KEY`.
-
-The built-in `@makers/deepseek-v4-flash` model is free with a usage cap and is suitable for prototyping. For production, bind your own paid provider (BYOK).
+`.env.example` is the committable template; `.env` is git-ignored and must never be committed.
 
 ## Local Development
 
-Prerequisites: Node.js ≥ 18, Python ≥ 3.10, and the EdgeOne CLI (`npm i -g edgeone`).
+Prerequisites: Node.js ≥ 18, Python ≥ 3.10, EdgeOne CLI (`npm i -g edgeone`).
 
 ```bash
 npm install
 pip install -r requirements.txt
-cp .env.example .env       # then fill in AI_GATEWAY_API_KEY / AI_GATEWAY_BASE_URL
+cp .env.example .env       # fill in AI_GATEWAY_API_KEY and AMAP_API_KEY
 edgeone makers dev
 ```
 
-Local agent metrics & traces are exposed at `http://localhost:8080/agent-metrics`.
+Local agent metrics & traces: `http://localhost:8080/agent-metrics`.
+
+Test prompts:
+1. `我在红莲南路地铁站附近，我想要去一个既有倍轻松又有西厅村屋的离得近的商场，帮我推荐。`
+2. Follow-up in the same conversation: `如果不要求两个品牌同时存在，还有没有距离更近的选择？`
 
 ## Project Structure
 
 ```text
-openAI-agent-starter-python/
-├── agents/                          # Stateful EdgeOne Makers Agent Functions (Python)
-│   ├── chat/index.py               # POST /chat — SSE streaming chat
-│   ├── chat/stop.py                # POST /chat/stop — abort active run
-│   ├── _logger.py                  # Logger utility (private)
-│   └── _tools.py                   # Agent tool definitions (private)
-├── cloud-functions/                 # Stateless EdgeOne Makers Python cloud functions
-│   ├── history/index.py            # POST /history — load conversation messages
-│   └── _logger.py                  # Logger utility
-├── src/                             # React + Vite + TypeScript frontend
-│   ├── App.tsx                     # Main app + SSE stream lifecycle
-│   ├── api.ts                      # /chat, /chat/stop, /history wrappers
-│   └── components/                 # ChatWindow, ChatInput, CodeViewer, ToolIndicators, ...
-├── package.json                     # Frontend dependencies
-├── requirements.txt                 # Python dependencies
-├── edgeone.json                     # framework=openai-agents-sdk
-├── vite.config.ts
-├── tsconfig.json
-└── .gitignore
+├── agents/chat/index.py       # POST /chat — SSE streaming + Agent definition
+├── agents/chat/stop.py        # POST /chat/stop
+├── agents/_tools.py           # 4 AMap @function_tool definitions
+├── cloud-functions/           # stateless /history, /conversations, ...
+├── src/                       # React + Vite + TypeScript frontend
+├── api-schema.json            # third-party API description
+├── .env.example / .env        # template / local (ignored)
+├── edgeone.json               # framework=openai-agents-sdk (keep template values)
+└── MANUAL_STEPS.md            # manual operation steps
 ```
 
 > Files prefixed with `_` are private modules — not exposed as public routes.
 
-## Resources
+## Deployment
 
-- [EdgeOne Makers Agents — Documentation](https://pages.edgeone.ai/document/agents)
-- [EdgeOne Makers — Quick Start](https://pages.edgeone.ai/document/agents-quick-start)
-- [Makers Models](https://pages.edgeone.ai/document/models)
+Push to your own fork and EdgeOne Makers deploys automatically. After changing environment variables or deployment config, use **Deployment → New Deployment → Confirm** in Makers. Completion criterion: the temporary preview URL is reachable. Custom domain is optional.
 
 ## License
 
-MIT.
+MIT (inherited from the upstream starter).

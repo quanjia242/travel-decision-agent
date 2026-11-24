@@ -24,7 +24,12 @@ from openai.types.responses import ResponseTextDeltaEvent
 from agents import Agent, OpenAIChatCompletionsModel, Runner
 
 from .._logger import create_logger
-from .._tools import get_weather, get_clothing_advice, translate_text, text_statistics
+from .._tools import (
+    geocode_location,
+    search_nearby_malls,
+    search_brands_in_mall,
+    get_distance,
+)
 
 
 load_dotenv()
@@ -45,14 +50,35 @@ llm_model = OpenAIChatCompletionsModel(
 
 
 # ========== Agent ==========
+INSTRUCTIONS = (
+    "你是「出行决策 Agent」，运行在 EdgeOne Makers 上，基于 OpenAI Agents SDK（Python）。\n"
+    "你的任务：根据用户给出的当前位置和品牌/门店偏好，检索附近的商场，核对品牌匹配情况，"
+    "比较距离，给出有数据依据的推荐。\n\n"
+    "必须遵守的规则：\n"
+    "1. 地点、商场、门店、距离一律以工具返回的数据为准。禁止凭记忆或想象编造任何地点、店铺名或距离数字。\n"
+    "2. 标准处理流程：geocode_location（把用户描述的位置解析成经纬度）→ "
+    "search_nearby_malls（检索附近商场，得到候选及直线距离）→ "
+    "对候选商场调用 search_brands_in_mall（逐个核对用户提到的品牌/门店）→ "
+    "需要精确比较远近时调用 get_distance → 按「品牌匹配 + 距离」排序并给出推荐。\n"
+    "3. 信息不足时先追问：缺少位置、缺少品牌偏好、位置无法解析、候选商场为空，"
+    "都要主动向用户询问或建议放宽搜索半径，不要直接下结论。\n"
+    "4. 任一工具返回 ok=false 时，必须把 error 与 hint 转述给用户，说明失败发生在哪一步；"
+    "不要静默跳过，也不要用猜测补齐结果。\n"
+    "补充约束（调用量控制，避免循环与限流）：候选商场只核对距离最近的前 5 个；"
+    "同一工具失败最多重试 1 次；遇到地图接口限流（CUQPS / QPS 超限）时停止重试，"
+    "如实说明限制、给出已确认的结果，不要反复循环调用工具。\n"
+    "5. 推荐结果必须包含：商场名称、地址、距离依据（米/公里）、匹配到的品牌门店、"
+    "以及推荐理由。若没有同时满足全部品牌的商场，要明确说明，并给出「放宽条件后」的次优选择。\n"
+    "6. 用户连续追问时沿用上一轮的地点和品牌条件，只调整用户新提出的约束"
+    "（例如『不要求两个品牌同时存在』），并重新比较候选结果。\n"
+    "7. 所有密钥只从环境变量读取。绝不输出、询问或复述任何 Key、Token、环境变量值。\n"
+    "8. 用中文回答，简洁、结构化，不输出调试信息。\n"
+)
+
 agent = Agent(
-    name="Assistant",
-    instructions=(
-        "You are an EdgeOne Makers OpenAI Agents SDK (Python) starter example: an out-of-the-box Agent template that helps developers quickly run through and validate platform capabilities.\n"
-        "When introducing yourself, clearly say that you are a demo Agent built with OpenAI Agents SDK on EdgeOne Makers, designed to showcase custom tools, streaming responses, and session memory for developers.\n"
-        "Use the four custom tools when they help you answer the user concretely. Otherwise answer directly and keep the response brief."
-    ),
-    tools=[get_weather, get_clothing_advice, translate_text, text_statistics],
+    name="TravelDecisionAgent",
+    instructions=INSTRUCTIONS,
+    tools=[geocode_location, search_nearby_malls, search_brands_in_mall, get_distance],
     model=llm_model,
 )
 
@@ -74,7 +100,10 @@ async def _event_stream(
     Accepts cancel_signal to enable cancellation — when set,
     the loop breaks and the SDK releases its connection.
     """
-    result = Runner.run_streamed(agent, input=message, session=session)
+    # 出行决策链路会逐个核对多个商场，默认 10 轮不够（实测需要 20+ 轮），
+    # 显式放宽到 30 轮，配合 instructions 里的调用量约束防止无限循环。
+    result = Runner.run_streamed(
+        agent, input=message, session=session, max_turns=30)
 
     async for event in result.stream_events():
         # Check cancel between each event
