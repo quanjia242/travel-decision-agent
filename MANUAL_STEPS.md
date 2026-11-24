@@ -12,18 +12,21 @@
 |---|---|---|
 | 准备：四账号 | ⚠️ 待你确认 | 腾讯云/Makers、GitHub、WorkBuddy、高德 是否都已登录 |
 | 准备：环境检查 | ✅ 已完成 | Git 2.55.0 / Python 3.13.14 / Node 22.22.2 / npm 10.9.7 |
-| 一：Fork Starter | ❌ 未做 | 需要你先在 GitHub 上 Fork 出 `travel-decision-agent` |
+| 一：Fork Starter | ✅ 已完成 | `https://github.com/quanjia242/travel-decision-agent`（已核实为真实 Fork，默认分支 `main`） |
 | 一：Makers 授权 + 绑定 Fork | ❌ 未做 | 网页操作，必须先完成 Fork |
 | 二：代码到本地 | ✅ 已完成 | 代码已就位（从上游模板展开），改造后可直接用 |
-| 二：高德 Web 服务 Key | ❌ 未做 | `.env` 里 `AMAP_API_KEY` 仍为空 |
-| 三：`.env` / `.env.example` / `.gitignore` | 🟡 模板就位、值未填 | `AI_GATEWAY_API_KEY`、`AMAP_API_KEY` 均为空；`.env` 已被 git 忽略 |
+| 二：高德 Web 服务 Key | ✅ 已完成 | Web 服务类型 Key 已配好，实测地理编码返回 `status=1 OK` |
+| 三：`.env` / `.env.example` / `.gitignore` | ✅ 已完成 | 两个 Key 均已填入；`.env` 被 git 忽略，提交物扫描无泄漏 |
 | 三：GitHub Actions Secret | ⏭️ 本模板不适用 | 仓库内没有 `.github/workflows`，自动部署走 Makers 侧 Git 集成 |
 | 四：Agent 改造 | ✅ 已完成 | 4 个高德工具 + 前端文案全部改完，构建通过 |
 | 五：依赖安装 | ✅ 已完成 | `npm install`、`pip install -r requirements.txt`、`npm i -g edgeone` |
-| 五：本地启动 + 两个场景验证 | ❌ 被阻塞 | 需先 `edgeone login`（本机未登录）+ 两个 Key 填好 |
-| 六：commit / push | ❌ 未做 | 仓库 0 个 commit、无 remote、未配 git 用户名/邮箱 |
+| 五：两个测试场景的逻辑验证 | ✅ 已完成 | 用真实 Key 端到端跑通 `python output/e2e_test.py 2`，场景一/二均通过 |
+| 五：`edgeone makers dev` 本地服务 | ❌ 被阻塞 | 仍需你在自己终端 `edgeone login`（本机弹不出浏览器） |
+| 六：commit / push | 🟡 本地已就绪 | 2 个 commit（`02776b6`、`9902a0b`）、origin 已设；push 只差 GitHub SSH 公钥 |
 | 七：Makers 新建部署上线 | ❌ 未做 | 网页操作 |
 | 课后：`submission/` 证据 | 🟡 目录已建 | 5 张截图 + 公开地址待补 |
+
+> 本轮实测修掉两个问题：① SDK 默认 10 轮不够用（真实场景需要 20+ 次工具调用），已在 `agents/chat/index.py` 改为 30 轮，并在指令里限制「只核对最近 5 个商场」；② 高德个人 Key 触发 `CUQPS_HAS_EXCEEDED_THE_LIMIT` 限流，已在 `agents/_tools.py` 加退避重试 + 品牌间节流。工具调用从 25 次降到 8 次，两个测试场景都通过。
 
 ---
 

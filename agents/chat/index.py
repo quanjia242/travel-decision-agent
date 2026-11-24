@@ -64,6 +64,9 @@ INSTRUCTIONS = (
     "都要主动向用户询问或建议放宽搜索半径，不要直接下结论。\n"
     "4. 任一工具返回 ok=false 时，必须把 error 与 hint 转述给用户，说明失败发生在哪一步；"
     "不要静默跳过，也不要用猜测补齐结果。\n"
+    "补充约束（调用量控制，避免循环与限流）：候选商场只核对距离最近的前 5 个；"
+    "同一工具失败最多重试 1 次；遇到地图接口限流（CUQPS / QPS 超限）时停止重试，"
+    "如实说明限制、给出已确认的结果，不要反复循环调用工具。\n"
     "5. 推荐结果必须包含：商场名称、地址、距离依据（米/公里）、匹配到的品牌门店、"
     "以及推荐理由。若没有同时满足全部品牌的商场，要明确说明，并给出「放宽条件后」的次优选择。\n"
     "6. 用户连续追问时沿用上一轮的地点和品牌条件，只调整用户新提出的约束"
@@ -97,7 +100,10 @@ async def _event_stream(
     Accepts cancel_signal to enable cancellation — when set,
     the loop breaks and the SDK releases its connection.
     """
-    result = Runner.run_streamed(agent, input=message, session=session)
+    # 出行决策链路会逐个核对多个商场，默认 10 轮不够（实测需要 20+ 轮），
+    # 显式放宽到 30 轮，配合 instructions 里的调用量约束防止无限循环。
+    result = Runner.run_streamed(
+        agent, input=message, session=session, max_turns=30)
 
     async for event in result.stream_events():
         # Check cancel between each event

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.parse
 import urllib.request
 from typing import Annotated
@@ -28,6 +29,7 @@ from agents import function_tool
 
 AMAP_BASE = "https://restapi.amap.com"
 HTTP_TIMEOUT = 8  # 秒
+MAX_RETRY = 2  # 遇到限流 / 网络抖动时的最大重试次数
 
 
 def _dumps(obj: object) -> str:
@@ -51,27 +53,41 @@ def _amap_get(path: str, params: dict) -> dict:
 
     query = {**params, "key": key, "output": "json"}
     url = f"{AMAP_BASE}{path}?{urllib.parse.urlencode(query)}"
-    try:
-        req = urllib.request.Request(
-            url, headers={"User-Agent": "travel-decision-agent/1.0"}
-        )
-        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-    except Exception as exc:  # URLError / timeout / JSON 解析失败等
-        return {
-            "ok": False,
-            "error": f"地图接口请求失败: {type(exc).__name__}",
-            "hint": "检查网络出口是否可访问 restapi.amap.com、Key 是否有效、接口权限是否开通",
-        }
 
-    if payload.get("status") != "1":
-        return {
-            "ok": False,
-            "error": f"地图接口返回错误: {payload.get('info', 'unknown')}",
-            "code": payload.get("infocode"),
-            "hint": "常见原因：Key 类型不是 Web 服务、账号未实名、服务未启用、当日配额用尽、参数不合法",
-        }
-    return {"ok": True, "data": payload}
+    last_error = None
+    for attempt in range(MAX_RETRY + 1):
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "travel-decision-agent/1.0"}
+            )
+            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:  # URLError / timeout / JSON 解析失败等
+            last_error = {
+                "ok": False,
+                "error": f"地图接口请求失败: {type(exc).__name__}",
+                "hint": "检查网络出口是否可访问 restapi.amap.com、Key 是否有效、接口权限是否开通",
+            }
+            if attempt < MAX_RETRY:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            return last_error
+
+        if payload.get("status") != "1":
+            info = payload.get("info", "unknown")
+            # 高德 Web 服务个人 Key 有 QPS 限制；限流是可恢复错误，退避后重试
+            if ("CUQPS" in info or "QPS" in info) and attempt < MAX_RETRY:
+                time.sleep(0.6 * (attempt + 1))
+                continue
+            return {
+                "ok": False,
+                "error": f"地图接口返回错误: {info}",
+                "code": payload.get("infocode"),
+                "hint": "常见原因：Key 类型不是 Web 服务、账号未实名、服务未启用、当日配额用尽、参数不合法",
+            }
+        return {"ok": True, "data": payload}
+
+    return last_error or {"ok": False, "error": "地图接口请求失败", "hint": "请稍后重试"}
 
 
 def _poi_brief(poi: dict) -> dict:
@@ -178,7 +194,10 @@ def search_brands_in_mall(
         return _dumps({"ok": False, "error": "brands 为空", "hint": "请传入至少一个品牌名"})
 
     checked = []
-    for brand in brand_list:
+    for index, brand in enumerate(brand_list):
+        # 逐个品牌查询之间做轻量节流，降低触发高德 QPS 限制的概率
+        if index:
+            time.sleep(0.25)
         single = _amap_get("/v3/place/around", {
             "location": mall_location,
             "keywords": brand,
