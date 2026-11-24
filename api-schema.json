@@ -1,0 +1,51 @@
+{
+  "$comment": "出行决策 Agent 的第三方 API 接入描述（对应课程 9.2 三步接入范式：.env 配 Key → api-schema.json 描述工具 → Agent 代码注册工具）。本文件为说明性清单，运行时由 agents/_tools.py 中的 @function_tool 直接发起调用。",
+  "provider": "高德开放平台 Web 服务",
+  "base": "https://restapi.amap.com",
+  "auth": {
+    "type": "query_param",
+    "param": "key",
+    "env": "AMAP_API_KEY",
+    "note": "Key 只从环境变量读取，不写入代码、JSON、提示词或日志"
+  },
+  "tools": [
+    {
+      "name": "geocode_location",
+      "description": "把用户描述的位置（如红莲南路地铁站）解析为经纬度，作为所有『附近』检索的起点。凡涉及距离判断必须先调用。",
+      "method": "GET",
+      "endpoint": "/v3/geocode/geo",
+      "params": ["address", "city"],
+      "returns": "location(lng,lat)、formatted_address、city、level"
+    },
+    {
+      "name": "search_nearby_malls",
+      "description": "按起点经纬度检索附近商场/购物中心，返回名称、地址、经纬度与直线距离，按距离由近到远排序。",
+      "method": "GET",
+      "endpoint": "/v3/place/around",
+      "params": ["location", "keywords", "radius", "sortrule=distance", "offset", "page"],
+      "returns": "malls[].name / address / location / distance_m"
+    },
+    {
+      "name": "search_brands_in_mall",
+      "description": "在商场及周边逐个核对用户提到的品牌/门店是否存在，返回逐品牌匹配证据与 all_matched 总判定。",
+      "method": "GET",
+      "endpoint": "/v3/place/around",
+      "params": ["location", "keywords", "radius", "sortrule=distance"],
+      "returns": "brands[].brand / matched / shops[]、all_matched、failed_brands"
+    },
+    {
+      "name": "get_distance",
+      "description": "计算起点到候选商场的距离，用于按距离排序比较。默认直线距离。",
+      "method": "GET",
+      "endpoint": "/v3/distance",
+      "params": ["origins", "destination", "type"],
+      "returns": "items[].distance_m / duration_s"
+    }
+  ],
+  "principles": [
+    "地点、门店与距离以工具返回为准，不由模型自行生成",
+    "工具描述必须写明调用条件、输入、输出与限制",
+    "工具失败时返回 ok=false + error + hint，由 Agent 转述给用户",
+    "密钥不出现在任何提交物中"
+  ]
+}
