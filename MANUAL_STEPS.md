@@ -22,7 +22,7 @@
 | 五：依赖安装 | ✅ 已完成 | `npm install`、`pip install -r requirements.txt`、`npm i -g edgeone` |
 | 五：两个测试场景的逻辑验证 | ✅ 已完成 | 用真实 Key 端到端跑通 `python output/e2e_test.py 2`，场景一/二均通过 |
 | 五：`edgeone makers dev` 本地服务 | ❌ 被阻塞 | 仍需你在自己终端 `edgeone login`（本机弹不出浏览器） |
-| 六：commit / push | 🟡 本地已就绪 | 2 个 commit（`02776b6`、`9902a0b`）、origin 已设；push 只差 GitHub SSH 公钥 |
+| 六：commit / push | ✅ 已完成 | `eb4deee` 已推到 `main`（`91445b3..eb4deee`），远端指针已核对一致；提交物无 `.env`、无真实 Key |
 | 七：Makers 新建部署上线 | ❌ 未做 | 网页操作 |
 | 课后：`submission/` 证据 | 🟡 目录已建 | 5 张截图 + 公开地址待补 |
 
@@ -350,20 +350,22 @@ submission/
 
 ---
 
-## 10. 我需要你提供的信息（回复这 4 条即可，别发 Key）
+## 10. 现在剩下的（全部是网页/控制台手动操作）
 
-1. **你的 Fork 仓库地址**：`https://github.com/<你的账号>/travel-decision-agent.git`（用于设置 remote 与 push）
-2. **第一步做完了吗**：Fork + Makers 授权绑定是否已完成？（没做的话按 §2 走）
-3. **三个值是否已在平台上配好**：Makers AI Gateway API Key、高德 Web 服务 Key、`EDGEONE_API_TOKEN` Secret —— 只需回答「已配好 / 还没」，**不要把值发给我**
-4. **接下来要我做到哪一步**：只准备代码 / 装依赖并本地启动体验 / 直接接 push 与上线
+代码已经推到你 Fork 的 `main` 分支了，我这边能做的都做完了。剩下三步：
 
-> 只要第 1 条给了、第 3 条配好了，我就可以继续跑本地验证和 push，把项目推进到「只差你在 Makers 点新建部署」的状态。
+1. **Makers 绑定这个 Fork 仓库**：控制台 → 项目 → 导入 Git 仓库（或新建项目）→ 选 GitHub → 授权 → 选 `travel-decision-agent` → 构建命令 `npm run build`、输出目录 `dist`、部署分支 `main` → 开始部署。
+   > 线上**环境变量**也要填同名变量：`AI_GATEWAY_API_KEY`、`AI_GATEWAY_BASE_URL`、`AI_GATEWAY_MODEL`、`AMAP_API_KEY`（值不要发给任何人）。
+2. **新建部署并上线验证**：部署管理 → 新建部署 → 等构建完成 → 打开临时预览地址，输入一次出行决策问题，确认回答不暴露 Key。
+3. **补 `submission/` 证据**：`local-running.png`、`normal-result.png`、`follow-up-result.png`、`actions-success.png`、`deploy-success.png`、`public-entry.txt`（填公开预览地址）。
+
+> 本地服务截图：在你自己终端跑 `edgeone login` 后 `edgeone makers dev`（访问地址以终端输出为准）。Agent 逻辑我已用真实 Key 端到端验证过两个场景，这一步主要是为了拿截图证据。
 
 ---
 
-## 11. 已经准备好、只等你操作的部分（精确命令）
+## 11. 已完成事项与剩余命令
 
-依赖和工具链我都装好了，本机现在缺的只有「登录」和「两个 Key」：
+依赖、两个 Key、`git` 身份、`origin`、commit 和 push 都已完成（详见顶部进度表）。本机现在只剩「本地服务登录」这一件事：
 
 ```bash
 cd C:/Users/Administrator/Desktop/agent
@@ -371,21 +373,18 @@ cd C:/Users/Administrator/Desktop/agent
 # ① 登录 EdgeOne（必须在你自己能弹出浏览器的终端里跑，我这边是非交互环境，登录窗口弹不出来）
 edgeone login
 
-# ② 填 .env 里的两个空值（用记事本/VSCode 打开，别贴到聊天窗口）
-#    AI_GATEWAY_API_KEY=...   ← Makers 控制台 → 模型与密钥 → 创建 API Key
-#    AMAP_API_KEY=...         ← 高德控制台 → 应用管理 → 添加 Key（服务平台选「Web 服务」）
-
-# ③ 启动本地服务（登录 + Key 都就绪后再跑）
+# ② 启动本地服务（Key 已填好，登录后直接跑）
 edgeone makers dev
-# 访问地址以终端输出为准，通常 http://localhost:8080
-# 本地观测面板：http://localhost:8080/agent-metrics
+# 访问地址以终端输出为准，官方默认是 http://localhost:8088
+# 本地观测面板：http://localhost:8088/agent-metrics
 ```
 
-`git` 侧还差三样（我拿到就能一次做完 commit/push）：
+推送结果备查：
 
-```bash
-git config --global user.name  "你的名字"
-git config --global user.email "你的 GitHub 邮箱"
-git remote add origin https://github.com/<你的账号>/travel-decision-agent.git
-```
+- Commit ID：`eb4deee`（merge commit，含 `02776b6`、`8daf60d`）
+- 推送分支：`main`
+- Push 结果：`91445b3..eb4deee  main -> main`，远端指针已核对一致
+- 走的是 SSH（`git@github.com:quanjia242/travel-decision-agent.git`），因为本机 `github.com` HTTPS 不通
+
+> 提醒：两个 Key 曾出现在聊天窗口，课程结束后建议到 Makers 控制台和高德控制台各删掉重建一次。
 
